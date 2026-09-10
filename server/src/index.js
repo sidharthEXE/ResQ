@@ -91,12 +91,16 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log('');
-  console.log('  🚑  ResQ — Emergency Response & Service Locator API');
-  console.log(`  ➜  http://localhost:${PORT}`);
-  console.log(`  ➜  Health: http://localhost:${PORT}/api/health`);
-  console.log(`  ➜  Nearby: http://localhost:${PORT}/api/places/nearby`);
-  console.log(`  ➜  Env:    ${process.env.NODE_ENV || 'development'}`);
-  console.log('');
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('  🚑  ResQ — Emergency Response & Service Locator API');
+    console.log(`  ➜  http://localhost:${PORT}`);
+    console.log(`  ➜  Health: http://localhost:${PORT}/api/health`);
+    console.log(`  ➜  Nearby: http://localhost:${PORT}/api/places/nearby`);
+    console.log(`  ➜  Env:    ${process.env.NODE_ENV || 'development'}`);
+    console.log('');
+  });
+}
+
+export default app;
