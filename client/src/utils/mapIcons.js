@@ -5,11 +5,11 @@ import L from 'leaflet';
  * Uses bold, filled shapes and high-contrast geometry to eliminate any fog/blurriness.
  */
 const SVG_ICONS = {
-  // Bold Swiss Emergency Trauma Cross (Solid filled white with rounded corners)
+  // Bold International Hospital "H" Emblem (No plus / cross)
   hospital: `
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path 
-        d="M9 2.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5V8h5.5A1.5 1.5 0 0 1 22 9.5v5a1.5 1.5 0 0 1-1.5 1.5H15v5.5A1.5 1.5 0 0 1 13.5 23h-3A1.5 1.5 0 0 1 9 21.5V16H3.5A1.5 1.5 0 0 1 2 14.5v-5A1.5 1.5 0 0 1 3.5 8H9V2.5z" 
+        d="M6 3.5A1.5 1.5 0 0 1 7.5 2h2A1.5 1.5 0 0 1 11 3.5V9h2V3.5A1.5 1.5 0 0 1 14.5 2h2A1.5 1.5 0 0 1 18 3.5v17a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5V12h-2v8.5a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5V3.5z" 
         fill="#ffffff"
       />
     </svg>
@@ -40,23 +40,24 @@ const SVG_ICONS = {
     </svg>
   `,
 
-  // Solid White Droplet with Emergency Cross Cutout
+  // Solid White Droplet with sleek crescent shine (No plus)
   blood_bank: `
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path 
-        d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" 
+        d="M12 2.5C12 2.5 5 10.5 5 15.5A7 7 0 0 0 19 15.5C19 10.5 12 2.5 12 2.5Z" 
         fill="#ffffff"
       />
+      <circle cx="10" cy="13.5" r="1.5" fill="#f43f5e" />
       <path 
-        d="M12 11v6m-3-3h6" 
-        stroke="#e11d48" 
-        stroke-width="2.6" 
+        d="M14.5 13a4 4 0 0 1-1.5 3.5" 
+        stroke="#f43f5e" 
+        stroke-width="2" 
         stroke-linecap="round"
       />
     </svg>
   `,
 
-  // Emergency Response Ambulance with Flashing Siren
+  // Emergency Response Ambulance with Flashing Siren (No plus)
   ambulance: `
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path 
@@ -76,9 +77,9 @@ const SVG_ICONS = {
       <circle cx="7.5" cy="17.5" r="2.5" fill="#ffffff"/>
       <circle cx="17.5" cy="17.5" r="2.5" fill="#ffffff"/>
       <path 
-        d="M8 8v3.5m-1.75-1.75h3.5" 
+        d="M6 10h5" 
         stroke="#ffffff" 
-        stroke-width="2" 
+        stroke-width="2.2" 
         stroke-linecap="round"
       />
       <path 
