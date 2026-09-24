@@ -108,7 +108,7 @@ export default function GoogleMapContainer({
           )}
 
           {/* Emergency Services Place Markers (Reusable) */}
-          {places.map((place) => {
+          {places.filter(place => place && typeof place.lat === 'number' && typeof place.lng === 'number').map((place) => {
             const isSelected = selectedPlace?.id === place.id;
             return (
               <Marker

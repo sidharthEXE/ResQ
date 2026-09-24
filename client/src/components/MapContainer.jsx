@@ -211,7 +211,7 @@ export default function MapContainer({
         )}
 
         {/* Nearby Place Markers with Real SVG Icons */}
-        {places.map((place) => {
+        {places.filter(place => place && typeof place.lat === 'number' && typeof place.lng === 'number').map((place) => {
           const isSelected = selectedPlace?.id === place.id;
           const directPhone = place.phone || place.emergencyHelpline;
           const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;

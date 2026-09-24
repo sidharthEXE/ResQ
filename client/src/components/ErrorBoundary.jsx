@@ -22,20 +22,20 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-white flex items-center justify-center p-6">
-          <div className="max-w-md w-full p-6 rounded-2xl border border-red-200 bg-red-50/50 text-center space-y-4 shadow-xs">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto text-red-600">
+        <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-6 transition-colors">
+          <div className="max-w-md w-full p-6 rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/20 text-center space-y-4 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center mx-auto text-red-600 dark:text-red-400">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-base font-medium text-gray-900">Something went wrong</h2>
-              <p className="text-xs text-gray-500 font-normal">
+              <h2 className="text-base font-medium text-gray-900 dark:text-white">Something went wrong</h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-normal">
                 {this.state.error?.message || 'An unexpected error occurred while rendering this page.'}
               </p>
             </div>
             <button
               onClick={this.handleReload}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-800 text-xs font-medium hover:bg-gray-50 shadow-xs cursor-pointer transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-800 dark:text-slate-200 text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-750 shadow-xs cursor-pointer transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Reload Application</span>
