@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { APIProvider, Map, Marker, Pin } from '@vis.gl/react-google-maps';
 import { useLocation } from '../context/LocationContext';
 import LeafletMapContainer from './MapContainer';
@@ -27,7 +27,7 @@ export default function GoogleMapContainer({
       : location
       ? { lat: location.lat, lng: location.lng }
       : { lat: 28.6139, lng: 77.2090 };
-  }, [center?.lat, center?.lng, location?.lat, location?.lng]);
+  }, [center, location]);
 
   const [mapCenter, setMapCenter] = useState(defaultPosition);
 

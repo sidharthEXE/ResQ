@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function usePlaceDetails(id) {
   const [place, setPlace] = useState(null);
@@ -6,7 +6,7 @@ export function usePlaceDetails(id) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchPlace = async () => {
+  const fetchPlace = useCallback(async () => {
     if (!id) return;
 
     setIsLoading(true);
@@ -33,11 +33,11 @@ export function usePlaceDetails(id) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchPlace();
-  }, [id]);
+  }, [fetchPlace]);
 
   return { place, helplines, isLoading, error, refetch: fetchPlace };
 }

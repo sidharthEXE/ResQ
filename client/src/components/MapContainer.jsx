@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer as LeafletMap, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import { 
   Search, Loader2, Navigation, Plus, Minus, Crosshair, 
-  MapPin, Phone, ShieldCheck, ExternalLink, Compass
+  MapPin, Phone, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { getMapPinIcon, userLocationIcon } from '../utils/mapIcons';
@@ -25,7 +25,7 @@ function MapRecenter({ center, selectedPlace }) {
         map.panTo([center.lat, center.lng], { animate: true, duration: 0.35 });
       }
     }
-  }, [center?.lat, center?.lng, selectedPlace?.id, map]);
+  }, [center, selectedPlace, map]);
 
   return null;
 }
@@ -108,7 +108,7 @@ export default function MapContainer({
     if (center) {
       setCurrentCenter(center);
     }
-  }, [center?.lat, center?.lng]);
+  }, [center]);
 
   const handleSearchClick = () => {
     if (onSearchArea && currentCenter) {

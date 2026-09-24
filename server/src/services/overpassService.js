@@ -2,10 +2,10 @@ import { calculateHaversineDistance } from '../utils/haversine.js';
 import { EMERGENCY_HELPLINES } from '../data/fallbackEmergency.js';
 
 const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
   'https://z.overpass-api.de/api/interpreter',
-  'https://overpass-api.de/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+  'https://overpass.kumi.systems/api/interpreter'
 ];
 
 /**
@@ -115,7 +115,7 @@ function buildOverpassQuery(lat, lng, radiusMeters, category) {
     .map((filter) => `${filter}(around:${radiusMeters},${lat},${lng});`)
     .join('\n');
 
-  return `[out:json][timeout:20];
+  return `[out:json][timeout:15];
 (
 ${queryParts}
 );
@@ -134,7 +134,7 @@ async function fetchFromSingleEndpoint(endpoint, query) {
       'Accept': 'application/json, */*'
     },
     body: `data=${encodeURIComponent(query)}`,
-    signal: AbortSignal.timeout(9000)
+    signal: AbortSignal.timeout(6000)
   });
 
   if (!response.ok) {

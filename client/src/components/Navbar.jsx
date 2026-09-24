@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { 
-  ShieldAlert, Menu, X, Building2, Pill, 
+  Menu, X, Building2, Pill, 
   Droplet, Truck, Home, Search, Zap, HeartHandshake
 } from 'lucide-react';
 import UseLocationButton from './UseLocationButton';
@@ -37,9 +37,10 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 py-2 transition-colors duration-150 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-15 gap-3">
+    <>
+      <header className="fixed top-0 inset-x-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 py-2 transition-colors duration-300 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-15 gap-3">
           
           {/* Brand Logo */}
           <Link to="/" className="flex items-center group shrink-0" aria-label="ResQ Home">
@@ -148,11 +149,11 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <>
           <div 
-            className="fixed inset-0 top-[57px] bg-black/40 z-40 md:hidden transition-opacity"
+            className="fixed inset-0 top-[73px] sm:top-[77px] bg-black/40 z-40 md:hidden transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          <div className="relative z-50 md:hidden bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-4 pt-3 pb-6 space-y-4 shadow-xl animate-slide-down">
+          <div className="relative z-50 md:hidden bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-4 pt-3 pb-6 space-y-4 shadow-xl animate-slide-down max-h-[calc(100vh-85px)] overflow-y-auto">
             
             {/* Quick Emergency Banner in Mobile Menu */}
             <Link
@@ -253,5 +254,9 @@ export default function Navbar() {
         </>
       )}
     </header>
-  );
+
+    {/* Spacer to preserve natural document flow under fixed navbar */}
+    <div className="h-[73px] sm:h-[77px] shrink-0" aria-hidden="true" />
+  </>
+);
 }

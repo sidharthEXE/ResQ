@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, SlidersHorizontal, X, Building2, Pill, 
-  Droplet, Truck, LayoutGrid, RotateCcw, Sparkles
+  Droplet, Truck, LayoutGrid, RotateCcw
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -29,11 +29,52 @@ export default function SearchBar({
   onRadiusChange,
   onClear 
 }) {
+  const [localRadius, setLocalRadius] = useState(radius);
+  const debounceTimerRef = useRef(null);
+
+  // Sync internal slider value if prop changes externally (e.g. Preset button or Reset)
+  useEffect(() => {
+    setLocalRadius(radius);
+  }, [radius]);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSliderInput = (val) => {
+    const num = Number(val);
+    setLocalRadius(num);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (onRadiusChange) {
+        onRadiusChange(num);
+      }
+    }, 250);
+  };
+
+  const handlePresetClick = (presetVal) => {
+    setLocalRadius(presetVal);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    if (onRadiusChange) {
+      onRadiusChange(presetVal);
+    }
+  };
+
   const isFiltered = searchQuery.trim() !== '' || (selectedCategory && selectedCategory !== 'all') || radius !== 10000;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Search is reactive on change, but submit keeps accessibility and forms natural
   };
 
   return (
@@ -77,7 +118,7 @@ export default function SearchBar({
         </button>
       </form>
 
-      {/* Interactive Category Filter Pills (Vercel/Geist Design) */}
+      {/* Interactive Category Filter Pills (Instant 0ms Filtering) */}
       {onCategoryChange && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
           {CATEGORIES.map((cat) => {
@@ -89,7 +130,7 @@ export default function SearchBar({
                 key={cat.id}
                 type="button"
                 onClick={() => onCategoryChange(cat.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors shrink-0 cursor-pointer font-medium text-xs border ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all shrink-0 cursor-pointer font-medium text-xs border ${
                   isSelected
                     ? 'bg-red-600 text-white border-red-600 shadow-xs'
                     : 'bg-gray-50 dark:bg-slate-850 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
@@ -112,7 +153,7 @@ export default function SearchBar({
             <SlidersHorizontal className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
             <span>Search Distance:</span>
             <span className="font-semibold text-gray-900 dark:text-white">
-              {(radius / 1000).toFixed(0)} km
+              {(localRadius / 1000).toFixed(0)} km
             </span>
           </div>
 
@@ -120,12 +161,12 @@ export default function SearchBar({
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-850 p-0.5 rounded-lg border border-gray-200/80 dark:border-slate-800">
               {RADIUS_PRESETS.map((preset) => {
-                const isActive = radius === preset.value;
+                const isActive = localRadius === preset.value;
                 return (
                   <button
                     key={preset.value}
                     type="button"
-                    onClick={() => onRadiusChange(preset.value)}
+                    onClick={() => handlePresetClick(preset.value)}
                     className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
@@ -143,8 +184,8 @@ export default function SearchBar({
               min="1000"
               max="35000"
               step="1000"
-              value={radius}
-              onChange={(e) => onRadiusChange(Number(e.target.value))}
+              value={localRadius}
+              onChange={(e) => handleSliderInput(e.target.value)}
               aria-label="Adjust radius slider"
               className="w-20 sm:w-28 accent-red-600 cursor-pointer h-1.5 bg-gray-200 dark:bg-slate-700 rounded-lg"
             />

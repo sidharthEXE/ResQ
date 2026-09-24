@@ -3,7 +3,14 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 const LocationContext = createContext(null);
 
 export function LocationProvider({ children }) {
-  const [location, setLocation] = useState(null); // { lat, lng, accuracy, timestamp }
+  const [location, setLocation] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('resq_last_location');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [errorStatus, setErrorStatus] = useState(null); // { code, message, type }
 
@@ -23,19 +30,25 @@ export function LocationProvider({ children }) {
 
     const options = {
       enableHighAccuracy: true,
-      timeout: 10000, // 10 seconds
-      maximumAge: 0 // Always request fresh coordinates
+      timeout: 7000,       // 7 seconds max to avoid hanging
+      maximumAge: 300000    // 5 minutes coordinate cache
     };
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        setLocation({
+        const newLoc = {
           lat: latitude,
           lng: longitude,
           accuracy: accuracy ? Math.round(accuracy) : null,
           timestamp: new Date(position.timestamp).toLocaleTimeString()
-        });
+        };
+        setLocation(newLoc);
+        try {
+          sessionStorage.setItem('resq_last_location', JSON.stringify(newLoc));
+        } catch {
+          // sessionStorage quota/security safe ignore
+        }
         setIsLoading(false);
         setErrorStatus(null);
       },

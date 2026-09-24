@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MOCK_CATEGORIES } from '../data/mockData';
-import { usePlaces } from '../hooks/usePlaces';
+import { usePlaces, matchesPlaceCategory } from '../hooks/usePlaces';
 import { useLocation } from '../context/LocationContext';
 import EmergencyCategoryCard from '../components/EmergencyCategoryCard';
 import PlaceCard from '../components/PlaceCard';
@@ -8,7 +8,7 @@ import GoogleMapContainer from '../components/GoogleMapContainer';
 import SearchBar from '../components/SearchBar';
 import ErrorState from '../components/ErrorState';
 import UseLocationButton from '../components/UseLocationButton';
-import { HeartPulse, AlertTriangle, Radio } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Radio, Loader2 } from 'lucide-react';
 
 export default function HomePage() {
   const { location, errorStatus } = useLocation();
@@ -21,16 +21,30 @@ export default function HomePage() {
   const defaultLocation = { lat: 28.6139, lng: 77.2090 };
   const queryLocation = customCenter || location || defaultLocation;
 
-  const { data: apiPlaces, isLoading, error, refetch } = usePlaces(queryLocation, selectedCategory, radius);
+  // Fetch full emergency facility spectrum for the radius; client-side filtering handles category tabs instantly (0ms)
+  const { data: apiPlaces, isLoading, error, refetch } = usePlaces(queryLocation, 'all', radius);
 
-  // Filter places based on search
-  const filteredPlaces = apiPlaces.filter((place) => {
-    const matchesQuery =
-      !searchQuery.trim() ||
-      place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      place.address.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesQuery;
-  });
+  // Instant zero-latency client-side filtering by category and search text
+  const filteredPlaces = React.useMemo(() => {
+    return apiPlaces.filter((place) => {
+      // 1. Category filter
+      if (selectedCategory && selectedCategory !== 'all') {
+        if (!matchesPlaceCategory(place, selectedCategory)) {
+          return false;
+        }
+      }
+
+      // 2. Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = place.name && place.name.toLowerCase().includes(q);
+        const matchesAddr = place.address && place.address.toLowerCase().includes(q);
+        if (!matchesName && !matchesAddr) return false;
+      }
+
+      return true;
+    });
+  }, [apiPlaces, selectedCategory, searchQuery]);
 
   return (
     <div className="space-y-8 pb-16">
@@ -121,8 +135,9 @@ export default function HomePage() {
             </h2>
             <p className="text-xs text-gray-500 dark:text-slate-400 font-normal">Real-time emergency services operating near your coordinates</p>
           </div>
-          <span className="text-xs font-normal text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-gray-200 dark:border-slate-700 self-start sm:self-auto">
-            {isLoading ? 'Searching...' : `${filteredPlaces.length} Places Found`}
+          <span className="text-xs font-normal text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-gray-200 dark:border-slate-700 self-start sm:self-auto inline-flex items-center gap-1.5">
+            {isLoading && <Loader2 className="w-3 h-3 animate-spin text-red-600 dark:text-red-400" />}
+            <span>{isLoading && apiPlaces.length === 0 ? 'Scanning Radar...' : `${filteredPlaces.length} Places Found`}</span>
           </span>
         </div>
 
@@ -161,7 +176,7 @@ export default function HomePage() {
 
           {/* Cards List (Bottom on Mobile, Left on Desktop) */}
           <div className="lg:col-span-5 space-y-3 order-2 lg:order-1">
-            {isLoading ? (
+            {isLoading && apiPlaces.length === 0 ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">

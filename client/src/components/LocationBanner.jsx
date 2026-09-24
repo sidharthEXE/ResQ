@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Search, AlertTriangle } from 'lucide-react';
+import { MapPin, Navigation, Search } from 'lucide-react';
 
 export default function LocationBanner({ 
   location, 

@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import { useTheme } from '../context/ThemeContext';
 
 import { getMapPinIcon, userLocationIcon } from '../utils/mapIcons';
@@ -24,17 +23,17 @@ function MapController({ center, selectedPlace }) {
         map.panTo([center.lat, center.lng], { animate: true, duration: 0.35 });
       }
     }
-  }, [center?.lat, center?.lng, selectedPlace?.id, map]);
+  }, [center, selectedPlace, map]);
 
   return null;
 }
 
-export default function EmergencyMap({ 
-  userLocation, 
-  places, 
-  selectedPlace, 
-  onSelectPlace, 
-  onViewDetails 
+export default function EmergencyMap({
+  userLocation,
+  places,
+  selectedPlace,
+  onSelectPlace,
+  onViewDetails
 }) {
   const { isDark } = useTheme();
   const defaultCenter = userLocation || { lat: 28.6139, lng: 77.2090 };
@@ -71,8 +70,8 @@ export default function EmergencyMap({
 
         {/* User Location Marker */}
         {userLocation && (
-          <Marker 
-            position={[userLocation.lat, userLocation.lng]} 
+          <Marker
+            position={[userLocation.lat, userLocation.lng]}
             icon={userLocationIcon}
           >
             <Popup>
@@ -107,14 +106,14 @@ export default function EmergencyMap({
                     {place.formattedDistance} • {place.openingHours}
                   </div>
                   <div style={{ display: 'flex', gap: '0.3rem' }}>
-                    <button 
-                      className="btn-primary" 
+                    <button
+                      className="btn-primary"
                       style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
                       onClick={() => onViewDetails(place)}
                     >
                       Details
                     </button>
-                    <a 
+                    <a
                       href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"

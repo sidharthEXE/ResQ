@@ -10,6 +10,13 @@ import contactsRouter from './routes/contacts.js';
 import donorsRouter from './routes/donors.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { connectDB } from './config/db.js';
+import { 
+  securityHeaders, 
+  noSqlSanitizer, 
+  readLimiter, 
+  mutationLimiter, 
+  optionalApiKeyGuard 
+} from './middleware/security.js';
 
 dotenv.config();
 
@@ -20,50 +27,61 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isDev = process.env.NODE_ENV !== 'production';
 
+// Disable default Express fingerprint
+app.disable('x-powered-by');
+
 // ─── Request logging ──────────────────────────────────────────────────────────
 // 'dev' format: colourised one-liner per request (only in development)
 // 'combined' Apache format: full details for production log aggregators
 app.use(morgan(isDev ? 'dev' : 'combined'));
 
+// ─── Security Headers ─────────────────────────────────────────────────────────
+app.use(securityHeaders);
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:3000',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow server-to-server requests (no Origin header) and known frontends
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow mobile apps, curl, and server-to-server (no Origin header)
+      if (!origin) return callback(null, true);
+
+      // Check allowed list or Vercel preview domains
+      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+      if (isAllowed) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin "${origin}" not allowed`));
       }
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'x-requested-with']
   })
 );
 
-// ─── Body parsing ─────────────────────────────────────────────────────────────
+// ─── Body parsing & Sanitization ───────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' })); // reject suspiciously large bodies
 app.use(express.urlencoded({ extended: false }));
+app.use(noSqlSanitizer);
 
-// ─── Rate limiting ────────────────────────────────────────────────────────────
-// Protects both our server and the upstream Overpass API from abuse
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,  // 1 minute window
-  max: 60,              // max 60 requests per IP per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    status: 'error',
-    message: 'Too many requests. Please wait a moment and try again.'
-  }
-});
+// ─── Optional API Key Guard (Active when RESQ_API_KEY is set in .env) ─────────
+app.use(optionalApiKeyGuard);
 
-app.use('/api/', apiLimiter);
+// ─── Rate Limiting (Tiered Protection) ─────────────────────────────────────────
+// Generous discovery limiter for read endpoints
+app.use('/api/places', readLimiter);
+
+// Strict limiter for mutation endpoints to prevent bot spam
+app.use('/api/donors', mutationLimiter);
+app.use('/api/users', mutationLimiter);
+app.use('/api/contacts', mutationLimiter);
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 

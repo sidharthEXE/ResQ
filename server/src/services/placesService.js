@@ -8,8 +8,8 @@ import { fetchNearbyPlacesFromOSM } from './overpassService.js';
 import { VERIFIED_EMERGENCY_NODES, EMERGENCY_HELPLINES } from '../data/fallbackEmergency.js';
 import { calculateHaversineDistance } from '../utils/haversine.js';
 
-// Cache results for 5 minutes to protect Overpass rate limits
-const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+// Cache results for 1 hour to protect Overpass and deliver sub-millisecond responses
+const cache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
 
 /**
  * Returns nearby emergency places merged from live OSM data and
@@ -19,29 +19,42 @@ const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
  * @returns {Promise<{ places: object[], helplines: object, source: string }>}
  */
 export async function getNearbyPlaces({ lat, lng, category, radius }) {
-  // Round coordinates to ~1 km bucket for cache efficiency
-  const cacheKey = `nearby_${lat.toFixed(2)}_${lng.toFixed(2)}_${category}_${radius}`;
+  const roundedLat = lat.toFixed(2);
+  const roundedLng = lng.toFixed(2);
+
+  // Exact cache key check
+  const cacheKey = `nearby_${roundedLat}_${roundedLng}_${category}_${radius}`;
   const cached = cache.get(cacheKey);
 
   if (cached) {
     return { places: cached, helplines: EMERGENCY_HELPLINES, source: 'cache' };
   }
 
-  // Fetch from Overpass — throws on complete failure (all endpoints down)
-  let osmPlaces = await fetchNearbyPlacesFromOSM(lat, lng, radius, category);
-
-  // Auto-expand search radius if fewer than 5 facilities are found,
-  // ensuring users in suburbs or sparse mapping areas never get stuck with only 0-2 results.
-  if (osmPlaces.length < 5 && radius < 20000) {
-    const expandedRadius = Math.min(Math.max(radius * 2, 12000), 25000);
-    try {
-      const expanded = await fetchNearbyPlacesFromOSM(lat, lng, expandedRadius, category);
-      if (expanded.length > osmPlaces.length) {
-        osmPlaces = expanded;
-      }
-    } catch (expErr) {
-      console.warn('Auto-expansion query failed, using original results:', expErr.message);
+  // Cross-category cache optimization:
+  // If the 'all' category was already fetched for this area and covers this radius,
+  // filter it immediately without hitting external Overpass API!
+  if (category !== 'all') {
+    const allCacheKey = `nearby_${roundedLat}_${roundedLng}_all_${radius}`;
+    const allCached = cache.get(allCacheKey);
+    if (allCached) {
+      const filtered = allCached.filter((p) => {
+        if (category === 'hospital') return p.category === 'hospital' || p.category === 'hospitals';
+        if (category === 'pharmacy') return p.category === 'pharmacy' || p.category === 'pharmacies';
+        if (category === 'blood_bank') return p.category === 'blood_bank' || p.category === 'blood-banks';
+        if (category === 'ambulance') return p.category === 'ambulance' || p.category === 'ambulances';
+        return p.category === category;
+      });
+      cache.set(cacheKey, filtered);
+      return { places: filtered, helplines: EMERGENCY_HELPLINES, source: 'cache' };
     }
+  }
+
+  // Fetch from fast Overpass mirrors concurrently
+  let osmPlaces = [];
+  try {
+    osmPlaces = await fetchNearbyPlacesFromOSM(lat, lng, radius, category);
+  } catch (err) {
+    console.warn('Overpass fetch failed, falling back to verified local emergency nodes:', err.message);
   }
 
   // Determine effective coverage radius for verified local nodes

@@ -19,15 +19,30 @@ const getInitialTheme = () => {
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(getInitialTheme);
 
-  // Sync <html> class and localStorage with the active theme
+  // Synchronize <html> class, CSS color-scheme, and localStorage with the active theme
   useEffect(() => {
     const isDark = theme === 'dark';
-    document.documentElement.classList.toggle('dark', isDark);
+    const root = document.documentElement;
+
+    // Enable smooth coordinated transition across all UI elements
+    root.classList.add('theme-transitioning');
+    root.classList.toggle('dark', isDark);
+    root.style.colorScheme = isDark ? 'dark' : 'light';
+
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-      // Ignore storage errors
+      // Ignore storage quota/permission errors
     }
+
+    // Clean up temporary transition class after animations complete
+    const timer = setTimeout(() => {
+      root.classList.remove('theme-transitioning');
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [theme]);
 
   // Listen for system theme changes if user hasn't explicitly set preference
@@ -36,9 +51,7 @@ export function ThemeProvider({ children }) {
     const handleChange = (e) => {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) {
-        const next = e.matches ? 'dark' : 'light';
-        document.documentElement.classList.toggle('dark', next === 'dark');
-        setThemeState(next);
+        setThemeState(e.matches ? 'dark' : 'light');
       }
     };
 
@@ -46,24 +59,13 @@ export function ThemeProvider({ children }) {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Instantaneous, zero-overhead toggle
+  // Clean, pure state toggle without impure side effects inside updater
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      document.documentElement.classList.toggle('dark', next === 'dark');
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-      } catch {}
-      return next;
-    });
+    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
   const setTheme = useCallback((newTheme) => {
     if (newTheme === 'dark' || newTheme === 'light') {
-      document.documentElement.classList.toggle('dark', newTheme === 'dark');
-      try {
-        localStorage.setItem(STORAGE_KEY, newTheme);
-      } catch {}
       setThemeState(newTheme);
     }
   }, []);

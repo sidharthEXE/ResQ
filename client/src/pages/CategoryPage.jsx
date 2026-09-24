@@ -6,7 +6,7 @@ import PlaceCard from '../components/PlaceCard';
 import GoogleMapContainer from '../components/GoogleMapContainer';
 import SearchBar from '../components/SearchBar';
 import ErrorState from '../components/ErrorState';
-import { Building2, Pill, Droplet, Truck } from 'lucide-react';
+import { Building2, Pill, Droplet, Truck, Loader2 } from 'lucide-react';
 
 const ICON_MAP = {
   hospitals: Building2,
@@ -34,14 +34,18 @@ export default function CategoryPage({ categoryId }) {
 
   const { data: apiPlaces, isLoading, error, refetch } = usePlaces(queryLocation, categoryId, radius);
 
-  // Filter places by search text
-  const filteredPlaces = apiPlaces.filter((place) => {
-    const matchesQuery =
-      !searchQuery.trim() ||
-      place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      place.address.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesQuery;
-  });
+  // Filter places by search text using memoization
+  const filteredPlaces = React.useMemo(() => {
+    return apiPlaces.filter((place) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = place.name && place.name.toLowerCase().includes(q);
+        const matchesAddr = place.address && place.address.toLowerCase().includes(q);
+        return matchesName || matchesAddr;
+      }
+      return true;
+    });
+  }, [apiPlaces, searchQuery]);
 
   return (
     <div className="space-y-6 pb-16">
@@ -58,8 +62,9 @@ export default function CategoryPage({ categoryId }) {
           </div>
         </div>
 
-        <span className="px-3 py-1 text-xs font-normal bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/60 rounded-full">
-          {isLoading ? 'Scanning Nearby...' : `${filteredPlaces.length} Facilities Active`}
+        <span className="px-3 py-1 text-xs font-normal bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/60 rounded-full inline-flex items-center gap-1.5">
+          {isLoading && <Loader2 className="w-3 h-3 animate-spin text-red-600 dark:text-red-400" />}
+          <span>{isLoading && apiPlaces.length === 0 ? 'Scanning Nearby...' : `${filteredPlaces.length} Facilities Active`}</span>
         </span>
       </div>
 
@@ -110,7 +115,7 @@ export default function CategoryPage({ categoryId }) {
 
         {/* Place Cards List */}
         <div className="lg:col-span-5 space-y-3 order-2 lg:order-1">
-          {isLoading ? (
+          {isLoading && apiPlaces.length === 0 ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="p-5 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">

@@ -88,8 +88,8 @@ function DonorResultCard({ donor }) {
 function EmergencyLoading({ message }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-3">
-      <div className="w-10 h-10 border-2 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
-      <p className="text-gray-500 font-normal text-center text-xs">{message}</p>
+      <div className="w-10 h-10 border-2 border-red-200 dark:border-red-900 border-t-red-600 dark:border-t-red-500 rounded-full animate-spin"></div>
+      <p className="text-gray-500 dark:text-slate-400 font-normal text-center text-xs">{message}</p>
     </div>
   );
 }
@@ -97,14 +97,14 @@ function EmergencyLoading({ message }) {
 function EmergencyError({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
-      <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center">
-        <AlertTriangle className="w-6 h-6 text-red-600" />
+      <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-center justify-center">
+        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
       </div>
-      <p className="text-red-700 font-normal text-xs max-w-xs">{message}</p>
+      <p className="text-red-700 dark:text-red-300 font-normal text-xs max-w-xs">{message}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="px-5 min-h-[40px] rounded-xl text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+          className="px-5 min-h-[40px] rounded-xl text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer"
         >
           Try Again
         </button>
@@ -116,10 +116,10 @@ function EmergencyError({ message, onRetry }) {
 function EmergencyEmpty({ message }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-3 text-center">
-      <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
-        <MapPin className="w-6 h-6 text-gray-400" />
+      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-slate-850 border border-gray-200 dark:border-slate-800 flex items-center justify-center">
+        <MapPin className="w-6 h-6 text-gray-400 dark:text-slate-500" />
       </div>
-      <p className="text-gray-500 font-normal text-xs max-w-xs">{message}</p>
+      <p className="text-gray-500 dark:text-slate-400 font-normal text-xs max-w-xs">{message}</p>
     </div>
   );
 }
@@ -348,7 +348,7 @@ export default function EmergencyModePage() {
         <span className="text-xs bg-white/20 px-2.5 py-1 rounded-md font-normal">DONORS &rarr;</span>
       </button>
 
-      <button onClick={handleShare} className="w-full flex items-center justify-between px-5 min-h-[64px] rounded-2xl text-sm font-medium text-white bg-gray-900 hover:bg-black transition-colors">
+      <button onClick={handleShare} className="w-full flex items-center justify-between px-5 min-h-[64px] rounded-2xl text-sm font-medium text-white bg-gray-900 hover:bg-black dark:bg-slate-800 dark:hover:bg-slate-750 border border-transparent dark:border-slate-700 transition-colors shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
             <Share2 className="w-5 h-5 text-white" />

@@ -26,6 +26,7 @@ export async function nearbyHandler(req, res, next) {
     const { lat, lng, category, radius } = parsed.data;
     const result = await getNearbyPlaces({ lat, lng, category, radius });
 
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     return res.json({
       status: 'success',
       source: result.source,
