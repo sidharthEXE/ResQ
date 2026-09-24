@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
 
 import placesRouter from './routes/places.js';
 import usersRouter from './routes/users.js';
@@ -109,7 +108,7 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log('');
     console.log('  🚑  ResQ — Emergency Response & Service Locator API');

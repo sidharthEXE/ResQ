@@ -34,7 +34,7 @@ export const nearbyQuerySchema = z.object({
   radius: z.coerce
     .number({ invalid_type_error: 'radius must be a number' })
     .min(100, 'radius must be >= 100 metres')
-    .max(30000, 'radius must be <= 30 000 metres')
+    .max(50000, 'radius must be <= 50 000 metres')
     .default(5000)
 });
 

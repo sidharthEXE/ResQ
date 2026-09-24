@@ -1,8 +1,12 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { userSchema } from '../validators/mongoValidators.js';
 
 export const createUser = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database service unavailable' });
+    }
     const validatedData = userSchema.parse(req.body);
     
     // Check if user already exists
@@ -23,6 +27,9 @@ export const createUser = async (req, res, next) => {
 
 export const getUser = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database service unavailable' });
+    }
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

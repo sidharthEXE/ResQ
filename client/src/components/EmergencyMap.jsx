@@ -30,7 +30,7 @@ function MapController({ center, selectedPlace }) {
 
 export default function EmergencyMap({
   userLocation,
-  places,
+  places = [],
   selectedPlace,
   onSelectPlace,
   onViewDetails
@@ -86,7 +86,7 @@ export default function EmergencyMap({
         )}
 
         {/* Emergency Place Pins */}
-        {places.map((place) => {
+        {places.filter(p => p && typeof p.lat === 'number' && typeof p.lng === 'number').map((place) => {
           const isSelected = selectedPlace?.id === place.id;
           return (
             <Marker
@@ -94,7 +94,7 @@ export default function EmergencyMap({
               position={[place.lat, place.lng]}
               icon={getMapPinIcon(place.category, isSelected)}
               eventHandlers={{
-                click: () => onSelectPlace(place)
+                click: () => onSelectPlace?.(place)
               }}
             >
               <Popup>
@@ -109,7 +109,7 @@ export default function EmergencyMap({
                     <button
                       className="btn-primary"
                       style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-                      onClick={() => onViewDetails(place)}
+                      onClick={() => onViewDetails?.(place)}
                     >
                       Details
                     </button>

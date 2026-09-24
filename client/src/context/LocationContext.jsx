@@ -87,6 +87,11 @@ export function LocationProvider({ children }) {
   const clearLocation = useCallback(() => {
     setLocation(null);
     setErrorStatus(null);
+    try {
+      sessionStorage.removeItem('resq_last_location');
+    } catch {
+      // safe ignore
+    }
   }, []);
 
   return (

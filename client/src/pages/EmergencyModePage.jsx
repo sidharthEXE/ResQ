@@ -72,7 +72,11 @@ function DonorResultCard({ donor }) {
       </div>
       <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400 font-normal">
         <MapPin className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
-        <span>Approx: {donor.approximateLocation.lat}, {donor.approximateLocation.lng}</span>
+        <span>
+          Approx: {donor.approximateLocation?.lat != null && donor.approximateLocation?.lng != null 
+            ? `${donor.approximateLocation.lat}, ${donor.approximateLocation.lng}` 
+            : 'Nearby'}
+        </span>
       </div>
       <a
         href={`tel:${donor.phone}`}

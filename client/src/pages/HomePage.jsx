@@ -10,6 +10,8 @@ import ErrorState from '../components/ErrorState';
 import UseLocationButton from '../components/UseLocationButton';
 import { HeartPulse, AlertTriangle, Radio, Loader2 } from 'lucide-react';
 
+const DEFAULT_LOCATION = { lat: 28.6139, lng: 77.2090 };
+
 export default function HomePage() {
   const { location, errorStatus } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,8 +20,9 @@ export default function HomePage() {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [customCenter, setCustomCenter] = useState(null);
 
-  const defaultLocation = { lat: 28.6139, lng: 77.2090 };
-  const queryLocation = customCenter || location || defaultLocation;
+  const queryLocation = React.useMemo(() => {
+    return customCenter || location || DEFAULT_LOCATION;
+  }, [customCenter, location]);
 
   // Fetch full emergency facility spectrum for the radius; client-side filtering handles category tabs instantly (0ms)
   const { data: apiPlaces, isLoading, error, refetch } = usePlaces(queryLocation, 'all', radius);

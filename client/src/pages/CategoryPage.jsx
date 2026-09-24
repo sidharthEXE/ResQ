@@ -15,6 +15,8 @@ const ICON_MAP = {
   ambulances: Truck
 };
 
+const DEFAULT_LOCATION = { lat: 28.6139, lng: 77.2090 };
+
 export default function CategoryPage({ categoryId }) {
   const { location } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,8 +31,9 @@ export default function CategoryPage({ categoryId }) {
 
   const IconComponent = ICON_MAP[categoryId] || Building2;
 
-  const defaultLocation = { lat: 28.6139, lng: 77.2090 };
-  const queryLocation = customCenter || location || defaultLocation;
+  const queryLocation = React.useMemo(() => {
+    return customCenter || location || DEFAULT_LOCATION;
+  }, [customCenter, location]);
 
   const { data: apiPlaces, isLoading, error, refetch } = usePlaces(queryLocation, categoryId, radius);
 

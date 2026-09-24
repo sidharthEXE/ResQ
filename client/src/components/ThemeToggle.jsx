@@ -35,7 +35,7 @@ export default function ThemeToggle({ className = '' }) {
 
       {/* Animated Sliding Thumb */}
       <div
-        className={`relative z-10 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300 cubic-bezier(0.34, 1.25, 0.64, 1) will-change-transform ${
+        className={`relative z-10 flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.25,0.64,1)] will-change-transform ${
           isDark
             ? 'translate-x-[26px] bg-slate-800 border border-indigo-400/30 text-indigo-200 shadow-[0_2px_8px_rgba(0,0,0,0.5),0_1px_2px_rgba(99,102,241,0.2)]'
             : 'translate-x-0 bg-white border border-amber-200/90 text-amber-500 shadow-[0_2px_6px_rgba(217,119,6,0.15),0_1px_2px_rgba(0,0,0,0.06)]'

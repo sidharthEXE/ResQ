@@ -1,8 +1,12 @@
+import mongoose from 'mongoose';
 import EmergencyContact from '../models/EmergencyContact.js';
 import { contactSchema } from '../validators/mongoValidators.js';
 
 export const createContact = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database service unavailable' });
+    }
     const validatedData = contactSchema.parse(req.body);
     
     const contact = await EmergencyContact.create(validatedData);
@@ -17,6 +21,9 @@ export const createContact = async (req, res, next) => {
 
 export const getUserContacts = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Database service unavailable' });
+    }
     const contacts = await EmergencyContact.find({ userId: req.params.userId }).sort({ createdAt: -1 });
     res.json(contacts);
   } catch (error) {

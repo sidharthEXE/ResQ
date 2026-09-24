@@ -34,14 +34,17 @@ export function usePlaces(location, category = 'all', radius = 10000) {
 
   const abortControllerRef = useRef(null);
 
+  const locLat = location?.lat;
+  const locLng = location?.lng;
+
   const fetchPlaces = useCallback(async (forceRefresh = false) => {
-    if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+    if (typeof locLat !== 'number' || typeof locLng !== 'number') {
       return;
     }
 
     const normCat = normalizeCategory(category);
-    const bucketLat = location.lat.toFixed(2);
-    const bucketLng = location.lng.toFixed(2);
+    const bucketLat = locLat.toFixed(2);
+    const bucketLng = locLng.toFixed(2);
     const cacheKey = `${bucketLat}_${bucketLng}_${normCat}_${radius}`;
     const allCacheKey = `${bucketLat}_${bucketLng}_all_${radius}`;
 
@@ -83,8 +86,8 @@ export function usePlaces(location, category = 'all', radius = 10000) {
 
     try {
       const queryParams = new URLSearchParams({
-        lat: location.lat,
-        lng: location.lng,
+        lat: locLat,
+        lng: locLng,
         radius,
       });
       if (normCat !== 'all') {
@@ -134,7 +137,7 @@ export function usePlaces(location, category = 'all', radius = 10000) {
     } finally {
       setIsLoading(false);
     }
-  }, [location, category, radius]);
+  }, [locLat, locLng, category, radius]);
 
   useEffect(() => {
     fetchPlaces();
