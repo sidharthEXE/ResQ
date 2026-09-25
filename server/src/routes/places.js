@@ -1,16 +1,14 @@
-/**
- * Places Router
- * Only wires URL paths to controller functions.
- * No business logic lives here.
- */
 import { Router } from 'express';
 import {
   nearbyHandler,
   placeByIdHandler,
   helplinesHandler
 } from '../controllers/places.controller.js';
+import { readLimiter } from '../middleware/security.js';
 
 const router = Router();
+
+router.use(readLimiter);
 
 // GET /api/places/nearby?lat=&lng=&category=&radius=
 router.get('/nearby', nearbyHandler);
@@ -22,3 +20,4 @@ router.get('/helplines', helplinesHandler);
 router.get('/:id', placeByIdHandler);
 
 export default router;
+

@@ -9,6 +9,9 @@ export default function ThemeToggle({ className = '' }) {
     <button
       type="button"
       onClick={toggleTheme}
+      data-theme-toggle=""
+      role="switch"
+      aria-checked={isDark}
       className={`relative inline-flex items-center h-8 w-[58px] rounded-full p-1 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 active:scale-[0.97] transition-all duration-300 shrink-0 ${
         isDark
           ? 'bg-slate-900 border border-slate-700/80 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]'

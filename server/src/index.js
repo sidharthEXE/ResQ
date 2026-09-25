@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import placesRouter from './routes/places.js';
 import usersRouter from './routes/users.js';
@@ -12,51 +14,63 @@ import { connectDB } from './config/db.js';
 import { 
   securityHeaders, 
   noSqlSanitizer, 
-  readLimiter, 
-  mutationLimiter, 
   optionalApiKeyGuard 
 } from './middleware/security.js';
 
-dotenv.config();
+// Ensure .env is reliably loaded whether started from workspace root, server dir, or Vercel
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config(); // fallback to current working directory
 
-// Connect to MongoDB
+// Initiate MongoDB connection (non-blocking, cached for serverless)
 connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Disable default Express fingerprint
+// Trust reverse proxies (Vercel, Nginx, Cloudflare) for accurate client IP rate limiting
+app.set('trust proxy', 1);
+
+// Disable Express fingerprint
 app.disable('x-powered-by');
 
 // ─── Request logging ──────────────────────────────────────────────────────────
-// 'dev' format: colourised one-liner per request (only in development)
-// 'combined' Apache format: full details for production log aggregators
 app.use(morgan(isDev ? 'dev' : 'combined'));
 
 // ─── Security Headers ─────────────────────────────────────────────────────────
 app.use(securityHeaders);
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
+const baseOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
+  'https://resq-services.vercel.app',
   process.env.FRONTEND_URL
-].filter(Boolean);
+];
+
+// Normalize origins by trimming whitespace and trailing slashes
+const allowedOrigins = baseOrigins
+  .filter(Boolean)
+  .map((origin) => origin.trim().replace(/\/+$/, ''));
 
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow mobile apps, curl, and server-to-server (no Origin header)
+      // Allow non-browser agents (mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
 
-      // Check allowed list or Vercel preview domains
-      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
-      if (isAllowed) {
+      const normalizedOrigin = origin.trim().replace(/\/+$/, '');
+      const isExplicitlyAllowed = allowedOrigins.includes(normalizedOrigin);
+      const isResQPreviewDomain = /^https:\/\/(resq|emergencyfinder)(-[a-z0-9-]+)?\.vercel\.app$/.test(normalizedOrigin);
+
+      if (isExplicitlyAllowed || isResQPreviewDomain) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS: origin "${origin}" not allowed`));
+        // Standard CORS rejection without triggering unhandled Express 500 error
+        callback(null, false);
       }
     },
     credentials: true,
@@ -66,26 +80,17 @@ app.use(
 );
 
 // ─── Body parsing & Sanitization ───────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' })); // reject suspiciously large bodies
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10kb' })); // reject suspiciously large payloads
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(noSqlSanitizer);
 
-// ─── Optional API Key Guard (Active when RESQ_API_KEY is set in .env) ─────────
+// ─── Optional API Key Guard (Active when RESQ_API_KEY is configured in .env) ──
 app.use(optionalApiKeyGuard);
-
-// ─── Rate Limiting (Tiered Protection) ─────────────────────────────────────────
-// Generous discovery limiter for read endpoints
-app.use('/api/places', readLimiter);
-
-// Strict limiter for mutation endpoints to prevent bot spam
-app.use('/api/donors', mutationLimiter);
-app.use('/api/users', mutationLimiter);
-app.use('/api/contacts', mutationLimiter);
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-// Health-check — useful for uptime monitors and CI readiness probes
-app.get('/api/health', (_req, res) => {
+// Health-check route (mounted at both /api/health and /health)
+const healthHandler = (_req, res) => {
   res.json({
     status: 'online',
     service: 'ResQ — Emergency Response & Service Locator API',
@@ -93,23 +98,32 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
-});
+};
 
-// Places endpoints
+app.get('/api/health', healthHandler);
+app.get('/health', healthHandler);
+
+// Mount routers at both /api/* and /* to guarantee 100% compatibility with
+// serverless rewrites and direct client reverse proxies
 app.use('/api/places', placesRouter);
+app.use('/places', placesRouter);
 
-// Database endpoints
 app.use('/api/users', usersRouter);
+app.use('/users', usersRouter);
+
 app.use('/api/contacts', contactsRouter);
+app.use('/contacts', contactsRouter);
+
 app.use('/api/donors', donorsRouter);
+app.use('/donors', donorsRouter);
 
 // ─── Error handling (must be last) ────────────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Server Startup & Graceful Shutdown ───────────────────────────────────────
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log('');
     console.log('  🚑  ResQ — Emergency Response & Service Locator API');
     console.log(`  ➜  http://localhost:${PORT}`);
@@ -118,6 +132,18 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
     console.log(`  ➜  Env:    ${process.env.NODE_ENV || 'development'}`);
     console.log('');
   });
+
+  const shutdown = () => {
+    console.log('Shutting down server gracefully...');
+    server.close(() => {
+      console.log('HTTP server closed.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 export default app;
+

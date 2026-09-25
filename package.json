@@ -12,8 +12,11 @@
     "start": "node server/src/index.js",
     "dev": "node dev.js",
     "dev:server": "npm --prefix server run dev",
-    "dev:client": "npm --prefix client run dev"
+    "dev:client": "npm --prefix client run dev",
+    "test": "npm --prefix server test",
+    "test:server": "npm --prefix server test"
   },
+
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

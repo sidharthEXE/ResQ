@@ -42,7 +42,7 @@ export async function nearbyHandler(req, res, next) {
 /**
  * GET /api/places/:id
  */
-export function placeByIdHandler(req, res, next) {
+export async function placeByIdHandler(req, res, next) {
   try {
     const parsed = placeIdSchema.safeParse(req.params);
 
@@ -54,7 +54,7 @@ export function placeByIdHandler(req, res, next) {
       });
     }
 
-    const place = getPlaceById(parsed.data.id);
+    const place = await getPlaceById(parsed.data.id);
 
     if (!place) {
       return res.status(404).json({
@@ -72,6 +72,7 @@ export function placeByIdHandler(req, res, next) {
     next(err);
   }
 }
+
 
 /**
  * GET /api/places/helplines

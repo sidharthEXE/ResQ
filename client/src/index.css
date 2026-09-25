@@ -41,10 +41,12 @@
 }
 
 /* Coordinated Theme Switching Transition (Zero Jitter, Smooth 60fps Blend) */
+/* Excludes elements inside [data-theme-toggle] so the toggle's own
+   transform/scale/opacity transitions are not clobbered by !important. */
 html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
+html.theme-transitioning *:not([data-theme-toggle] *),
+html.theme-transitioning *:not([data-theme-toggle] *)::before,
+html.theme-transitioning *:not([data-theme-toggle] *)::after {
   transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.3s cubic-bezier(0.4, 0, 0.2, 1),

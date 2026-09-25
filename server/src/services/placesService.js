@@ -4,12 +4,14 @@
  * Controllers never call third-party APIs directly.
  */
 import NodeCache from 'node-cache';
-import { fetchNearbyPlacesFromOSM } from './overpassService.js';
+import { fetchNearbyPlacesFromOSM, fetchOSMElementById } from './overpassService.js';
 import { VERIFIED_EMERGENCY_NODES, EMERGENCY_HELPLINES } from '../data/fallbackEmergency.js';
 import { calculateHaversineDistance } from '../utils/haversine.js';
 
-// Cache results for 1 hour to protect Overpass and deliver sub-millisecond responses
+// Cache query results for 1 hour to protect Overpass and deliver sub-millisecond responses
 const cache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
+// Cache individual places by ID for 2 hours for fast detail views
+const placeCache = new NodeCache({ stdTTL: 7200, checkperiod: 300 });
 
 /**
  * Returns nearby emergency places merged from live OSM data and
@@ -57,23 +59,14 @@ export async function getNearbyPlaces({ lat, lng, category, radius }) {
     console.warn('Overpass fetch failed, falling back to verified local emergency nodes:', err.message);
   }
 
-  // Determine effective coverage radius for verified local nodes
-  const maxDistanceMeters = osmPlaces.length > 0 
-    ? Math.max(...osmPlaces.map((p) => p.distanceMeters || 0), radius)
-    : radius;
-
-  // Merge in verified local nodes that fall within the effective radius
+  // Merge in verified local nodes that strictly fall within the user radius
   const verifiedNearby = VERIFIED_EMERGENCY_NODES
-    .filter((node) => {
-      const matchesCategory = category === 'all' || node.category === category;
-      if (!matchesCategory) return false;
-      const { distanceMeters } = calculateHaversineDistance(lat, lng, node.lat, node.lng);
-      return distanceMeters <= maxDistanceMeters;
-    })
+    .filter((node) => category === 'all' || node.category === category)
     .map((node) => {
       const dist = calculateHaversineDistance(lat, lng, node.lat, node.lng);
       return { ...node, ...dist, hasDirectPhone: Boolean(node.phone) };
-    });
+    })
+    .filter((node) => node.distanceMeters <= radius);
 
   // Deduplicate and sort by closest distance
   const seenIds = new Set();
@@ -82,6 +75,8 @@ export async function getNearbyPlaces({ lat, lng, category, radius }) {
     if (!seenIds.has(place.id)) {
       seenIds.add(place.id);
       combined.push(place);
+      // Index in placeCache for instantaneous O(1) single-place lookups
+      placeCache.set(place.id, place);
     }
   }
   combined.sort((a, b) => a.distanceKm - b.distanceKm);
@@ -92,25 +87,48 @@ export async function getNearbyPlaces({ lat, lng, category, radius }) {
 
 /**
  * Looks up a single place by its ID.
- * Searches verified nodes first, then can be extended to query OSM by ID.
+ * Searches verified nodes, in-memory place cache, query cache,
+ * and falls back to live OSM element lookup by ID if un-cached.
  *
  * @param {string} id
- * @returns {object|null}
+ * @returns {Promise<object|null>}
  */
-export function getPlaceById(id) {
+export async function getPlaceById(id) {
+  if (!id) return null;
+
   // 1. Check verified local nodes
   const verified = VERIFIED_EMERGENCY_NODES.find((n) => n.id === id);
   if (verified) return { ...verified, source: 'verified' };
 
-  // 2. OSM IDs are not individually queryable without re-fetching context,
-  //    so we check the in-memory cache for any prior nearby response that
-  //    contains this OSM element.
+  // 2. Check dedicated placeCache
+  const cachedPlace = placeCache.get(id);
+  if (cachedPlace) return { ...cachedPlace, source: 'cache' };
+
+  // 3. Check query cache
   const keys = cache.keys();
   for (const key of keys) {
     const places = cache.get(key);
     if (Array.isArray(places)) {
       const found = places.find((p) => p.id === id);
-      if (found) return { ...found, source: 'cache' };
+      if (found) {
+        placeCache.set(id, found);
+        return { ...found, source: 'cache' };
+      }
+    }
+  }
+
+  // 4. Live fallback for OSM elements (osm-node-123, osm-way-456, osm-relation-789)
+  const match = id.match(/^osm-(node|way|relation)-(\d+)$/);
+  if (match) {
+    const [, type, elementId] = match;
+    try {
+      const liveOsmPlace = await fetchOSMElementById(type, elementId);
+      if (liveOsmPlace) {
+        placeCache.set(id, liveOsmPlace);
+        return { ...liveOsmPlace, source: 'live' };
+      }
+    } catch (err) {
+      console.warn(`Failed live OSM lookup for ${id}:`, err.message);
     }
   }
 
@@ -118,3 +136,4 @@ export function getPlaceById(id) {
 }
 
 export { EMERGENCY_HELPLINES };
+

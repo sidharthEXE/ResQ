@@ -2,10 +2,11 @@ import { calculateHaversineDistance } from '../utils/haversine.js';
 import { EMERGENCY_HELPLINES } from '../data/fallbackEmergency.js';
 
 const OVERPASS_ENDPOINTS = [
+  'https://z.overpass-api.de/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://lz4.overpass-api.de/api/interpreter',
-  'https://z.overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
 ];
 
 /**
@@ -125,16 +126,16 @@ out center body;`;
 /**
  * Individual endpoint fetcher with proper headers and timeout.
  */
-async function fetchFromSingleEndpoint(endpoint, query) {
+async function fetchFromSingleEndpoint(endpoint, query, timeoutMs = 8000) {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'User-Agent': 'EmergencyFinderApp/2.0 (contact: admin@emergencyfinder.local)',
+      'User-Agent': 'ResQEmergencyApp/2.0 (contact: support@resq-emergency.org)',
       'Accept': 'application/json, */*'
     },
     body: `data=${encodeURIComponent(query)}`,
-    signal: AbortSignal.timeout(6000)
+    signal: AbortSignal.timeout(timeoutMs)
   });
 
   if (!response.ok) {
@@ -150,6 +151,142 @@ async function fetchFromSingleEndpoint(endpoint, query) {
 }
 
 /**
+ * Normalizes a raw OSM element into our standardized emergency Place schema.
+ */
+export function formatOSMElement(elem, refLat = null, refLng = null, defaultCategory = 'hospital') {
+  if (!elem) return null;
+
+  const elemLat = elem.lat ?? (elem.center && elem.center.lat);
+  const elemLng = elem.lon ?? (elem.center && elem.center.lon);
+
+  if (typeof elemLat !== 'number' || typeof elemLng !== 'number' || isNaN(elemLat) || isNaN(elemLng)) {
+    return null;
+  }
+
+  const tags = elem.tags || {};
+  const uniqueId = `osm-${elem.type || 'node'}-${elem.id}`;
+
+  let dist = { distanceKm: 0, distanceMeters: 0, formattedDistance: '0 m' };
+  if (refLat !== null && refLng !== null) {
+    dist = calculateHaversineDistance(refLat, refLng, elemLat, elemLng);
+  }
+
+  // Raw contact extraction
+  const rawPhone =
+    tags.phone ||
+    tags['contact:phone'] ||
+    tags['emergency:phone'] ||
+    tags.telephone ||
+    tags['contact:telephone'] ||
+    tags['contact:mobile'] ||
+    null;
+
+  // Standardized place category tag
+  let placeCategory = defaultCategory === 'all' ? 'hospital' : defaultCategory;
+  if (
+    tags.amenity === 'pharmacy' ||
+    tags.healthcare === 'pharmacy' ||
+    tags.shop === 'chemist' ||
+    tags.shop === 'pharmacy' ||
+    tags.shop === 'medical' ||
+    tags.shop === 'medical_store' ||
+    tags.shop === 'medicine' ||
+    tags.shop === 'medical_supply' ||
+    tags.shop === 'drugstore' ||
+    tags.amenity === 'dispensary' ||
+    tags.healthcare === 'dispensary' ||
+    tags.amenity === 'chemist' ||
+    tags.healthcare === 'chemist' ||
+    tags.dispensing === 'yes' ||
+    (tags.name && /pharmacy|chemist|medical|medicos|druggist|drug store|aushadhi|dawakhana|medicine/i.test(tags.name))
+  ) {
+    placeCategory = 'pharmacy';
+  } else if (
+    tags.amenity === 'hospital' ||
+    tags.healthcare === 'hospital' ||
+    tags.amenity === 'clinic' ||
+    tags.healthcare === 'clinic' ||
+    tags.amenity === 'doctors' ||
+    tags.healthcare === 'centre'
+  ) {
+    placeCategory = 'hospital';
+  } else if (
+    tags.healthcare === 'blood_bank' ||
+    tags.amenity === 'blood_bank' ||
+    tags.blood_bank ||
+    (tags.name && /blood|red cross/i.test(tags.name))
+  ) {
+    placeCategory = 'blood_bank';
+  } else if (
+    tags.emergency === 'ambulance_station' ||
+    tags.emergency === 'ambulance' ||
+    tags.amenity === 'ambulance_station' ||
+    (tags.name && /ambulance|ems/i.test(tags.name))
+  ) {
+    placeCategory = 'ambulance';
+  }
+
+  // Address construction from OSM tags
+  const street = tags['addr:street'] || tags['addr:full'] || tags['addr:housenumber'] || '';
+  const city = tags['addr:city'] || tags['addr:suburb'] || tags['addr:town'] || tags['addr:district'] || '';
+  const postcode = tags['addr:postcode'] || '';
+  let formattedAddress = [street, city, postcode].filter(Boolean).join(', ');
+
+  if (!formattedAddress) {
+    formattedAddress = tags.operator || tags.brand || 'Address details available on map navigation';
+  }
+
+  const rawName = tags.name || tags['name:en'] || tags.brand || tags.operator;
+  const name =
+    rawName ||
+    (placeCategory === 'pharmacy'
+      ? 'Local Pharmacy & Medical Store'
+      : `${placeCategory.replace('_', ' ').toUpperCase()} Service`);
+
+  return {
+    id: uniqueId,
+    osmId: elem.id,
+    name,
+    category: placeCategory,
+    lat: elemLat,
+    lng: elemLng,
+    address: formattedAddress,
+    phone: rawPhone,
+    hasDirectPhone: Boolean(rawPhone),
+    emergencyHelpline: EMERGENCY_HELPLINES.national.universal,
+    distanceKm: dist.distanceKm,
+    distanceMeters: dist.distanceMeters,
+    formattedDistance: dist.formattedDistance,
+    openingHours: tags.opening_hours || (tags['24/7'] === 'yes' ? '24/7 Open' : 'Contact for operational hours'),
+    is24x7: tags.opening_hours === '24/7' || tags['24/7'] === 'yes' || tags.amenity === 'hospital',
+    wheelchair: tags.wheelchair || 'unknown',
+    website: tags.website || tags['contact:website'] || null,
+    isVerified: false
+  };
+}
+
+/**
+ * Fetches a single OSM element by ID (e.g. node, way, relation) via Overpass query.
+ */
+export async function fetchOSMElementById(type, elementId, refLat = null, refLng = null) {
+  const cleanType = ['node', 'way', 'relation'].includes(type) ? type : 'node';
+  const query = `[out:json][timeout:8];(${cleanType}(${elementId}););out center body;`;
+
+  let responseData = null;
+  try {
+    responseData = await Promise.any(
+      OVERPASS_ENDPOINTS.map((endpoint) => fetchFromSingleEndpoint(endpoint, query, 6000))
+    );
+  } catch (err) {
+    console.warn(`Direct OSM lookup for ${cleanType}/${elementId} failed:`, err.message);
+    return null;
+  }
+
+  if (!responseData?.elements?.length) return null;
+  return formatOSMElement(responseData.elements[0], refLat, refLng);
+}
+
+/**
  * Fetches nearby emergency places from OpenStreetMap Overpass API using fast mirror racing.
  */
 export async function fetchNearbyPlacesFromOSM(lat, lng, radiusMeters, category) {
@@ -160,24 +297,13 @@ export async function fetchNearbyPlacesFromOSM(lat, lng, radiusMeters, category)
   try {
     // Race all fast mirrors concurrently — the fastest valid response wins!
     responseData = await Promise.any(
-      OVERPASS_ENDPOINTS.map((endpoint) => fetchFromSingleEndpoint(endpoint, query))
+      OVERPASS_ENDPOINTS.map((endpoint) => fetchFromSingleEndpoint(endpoint, query, 8000))
     );
   } catch (raceErr) {
-    console.warn('Fast mirror race failed, falling back to sequential retry...', raceErr.message);
-    
-    // Sequential fallback if parallel race is blocked
-    for (const endpoint of OVERPASS_ENDPOINTS) {
-      try {
-        responseData = await fetchFromSingleEndpoint(endpoint, query);
-        if (responseData && responseData.elements) break;
-      } catch (seqErr) {
-        console.warn(`Endpoint ${endpoint} fallback failed:`, seqErr.message);
-      }
-    }
+    console.warn('Fast mirror race failed or timed out:', raceErr.message);
   }
 
   if (!responseData || !responseData.elements) {
-    console.error('All Overpass API endpoints failed or returned empty payload');
     return [];
   }
 
@@ -185,115 +311,18 @@ export async function fetchNearbyPlacesFromOSM(lat, lng, radiusMeters, category)
   const results = [];
 
   for (const elem of responseData.elements) {
-    const tags = elem.tags || {};
-    const elemLat = elem.lat || (elem.center && elem.center.lat);
-    const elemLng = elem.lon || (elem.center && elem.center.lon);
+    const formatted = formatOSMElement(elem, lat, lng, category);
+    if (!formatted) continue;
 
-    if (!elemLat || !elemLng) continue;
+    if (seenIds.has(formatted.id)) continue;
+    seenIds.add(formatted.id);
 
-    const uniqueId = `osm-${elem.type || 'node'}-${elem.id}`;
-    if (seenIds.has(uniqueId)) continue;
-    seenIds.add(uniqueId);
-
-    const { distanceKm, distanceMeters, formattedDistance } = calculateHaversineDistance(
-      lat,
-      lng,
-      elemLat,
-      elemLng
-    );
-
-    // Raw contact extraction
-    const rawPhone =
-      tags.phone ||
-      tags['contact:phone'] ||
-      tags['emergency:phone'] ||
-      tags.telephone ||
-      tags['contact:telephone'] ||
-      tags['contact:mobile'] ||
-      null;
-
-    // Standardized place category tag
-    let placeCategory = category === 'all' ? 'hospital' : category;
-    if (
-      tags.amenity === 'pharmacy' ||
-      tags.healthcare === 'pharmacy' ||
-      tags.shop === 'chemist' ||
-      tags.shop === 'pharmacy' ||
-      tags.shop === 'medical' ||
-      tags.shop === 'medical_store' ||
-      tags.shop === 'medicine' ||
-      tags.shop === 'medical_supply' ||
-      tags.shop === 'drugstore' ||
-      tags.amenity === 'dispensary' ||
-      tags.healthcare === 'dispensary' ||
-      tags.amenity === 'chemist' ||
-      tags.healthcare === 'chemist' ||
-      tags.dispensing === 'yes' ||
-      (tags.name && /pharmacy|chemist|medical|medicos|druggist|drug store|aushadhi|dawakhana|medicine/i.test(tags.name))
-    ) {
-      placeCategory = 'pharmacy';
-    } else if (
-      tags.amenity === 'hospital' ||
-      tags.healthcare === 'hospital' ||
-      tags.amenity === 'clinic' ||
-      tags.healthcare === 'clinic' ||
-      tags.amenity === 'doctors' ||
-      tags.healthcare === 'centre'
-    ) {
-      placeCategory = 'hospital';
-    } else if (
-      tags.healthcare === 'blood_bank' ||
-      tags.amenity === 'blood_bank' ||
-      tags.blood_bank ||
-      (tags.name && /blood|red cross/i.test(tags.name))
-    ) {
-      placeCategory = 'blood_bank';
-    } else if (
-      tags.emergency === 'ambulance_station' ||
-      tags.emergency === 'ambulance' ||
-      tags.amenity === 'ambulance_station' ||
-      (tags.name && /ambulance|ems/i.test(tags.name))
-    ) {
-      placeCategory = 'ambulance';
-    }
-
-    // Address construction from OSM tags
-    const street = tags['addr:street'] || tags['addr:full'] || tags['addr:housenumber'] || '';
-    const city = tags['addr:city'] || tags['addr:suburb'] || tags['addr:town'] || tags['addr:district'] || '';
-    const postcode = tags['addr:postcode'] || '';
-    let formattedAddress = [street, city, postcode].filter(Boolean).join(', ');
-
-    if (!formattedAddress) {
-      formattedAddress = tags.operator || tags.brand || 'Address details available on map navigation';
-    }
-
-    const rawName = tags.name || tags['name:en'] || tags.brand || tags.operator;
-    const name = rawName || (placeCategory === 'pharmacy' ? 'Local Pharmacy & Medical Store' : `${placeCategory.replace('_', ' ').toUpperCase()} Service`);
-
-    results.push({
-      id: uniqueId,
-      osmId: elem.id,
-      name,
-      category: placeCategory,
-      lat: elemLat,
-      lng: elemLng,
-      address: formattedAddress,
-      phone: rawPhone,
-      hasDirectPhone: Boolean(rawPhone),
-      emergencyHelpline: EMERGENCY_HELPLINES.national.universal,
-      distanceKm,
-      distanceMeters,
-      formattedDistance,
-      openingHours: tags.opening_hours || (tags['24/7'] === 'yes' ? '24/7 Open' : 'Contact for operational hours'),
-      is24x7: tags.opening_hours === '24/7' || tags['24/7'] === 'yes' || tags.amenity === 'hospital',
-      wheelchair: tags.wheelchair || 'unknown',
-      website: tags.website || tags['contact:website'] || null,
-      isVerified: false
-    });
+    results.push(formatted);
   }
 
   // Sort by closest distance first
   return results.sort((a, b) => a.distanceKm - b.distanceKm);
 }
+
 
 

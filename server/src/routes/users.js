@@ -1,9 +1,11 @@
 import express from 'express';
 import { createUser, getUser } from '../controllers/userController.js';
+import { readLimiter, mutationLimiter } from '../middleware/security.js';
 
 const router = express.Router();
 
-router.post('/', createUser);
-router.get('/:id', getUser);
+router.post('/', mutationLimiter, createUser);
+router.get('/:id', readLimiter, getUser);
 
 export default router;
+
