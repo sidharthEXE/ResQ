@@ -18,7 +18,7 @@ export default function App() {
     <ThemeProvider>
       <LocationProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 flex flex-col font-sans selection:bg-red-500 selection:text-white relative overflow-x-hidden transition-colors duration-300">
+          <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 flex flex-col font-sans selection:bg-red-500 selection:text-white relative overflow-x-hidden">
             {/* Navigation Bar */}
             <Navbar />
 
@@ -52,7 +52,7 @@ export default function App() {
             <DevLocationPanel />
 
             {/* Global Footer */}
-            <footer className="bg-white dark:bg-slate-950 border-t border-gray-100 dark:border-slate-800/80 py-6 text-center text-xs text-gray-500 dark:text-gray-400 font-normal transition-colors">
+            <footer className="bg-white dark:bg-slate-950 border-t border-gray-100 dark:border-slate-800/80 py-6 text-center text-xs text-gray-500 dark:text-gray-400 font-normal">
               <p>© 2026 ResQ — Emergency Response & Service Locator. Built for rapid emergency service discovery.</p>
             </footer>
           </div>

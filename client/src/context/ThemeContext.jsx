@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useLayoutEffect, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useLayoutEffect, useEffect, useCallback } from 'react';
 
 const ThemeContext = createContext(null);
 const STORAGE_KEY = 'emergency_finder_theme';
@@ -11,7 +11,7 @@ const getInitialTheme = () => {
         return saved;
       }
     } catch {
-      // Ignore storage errors
+      // Ignore storage errors (private browsing, sandboxed iframes, etc.)
     }
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark';
@@ -23,52 +23,16 @@ const getInitialTheme = () => {
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(getInitialTheme);
 
-  // Track whether the current theme change is from an explicit user action
-  const isUserAction = useRef(false);
-  // Track first render to skip transition animation on initial mount
-  const isFirstRender = useRef(true);
-
-  // Synchronize <html> class and CSS color-scheme SYNCHRONOUSLY before paint
+  // Synchronize <html> root class and CSS color-scheme synchronously before paint
   useLayoutEffect(() => {
     const isDark = theme === 'dark';
     const root = document.documentElement;
 
-    // Only add the transition class when the user is actively toggling,
-    // never on the initial page load (prevents flash/jitter on mount)
-    if (!isFirstRender.current) {
-      root.classList.add('theme-transitioning');
-    }
-
     root.classList.toggle('dark', isDark);
     root.style.colorScheme = isDark ? 'dark' : 'light';
-
-    // Only persist to localStorage when the user explicitly toggled/set the theme.
-    // This preserves system-preference following when no explicit choice has been made.
-    if (isUserAction.current) {
-      try {
-        localStorage.setItem(STORAGE_KEY, theme);
-      } catch {
-        // Ignore storage quota/permission errors
-      }
-      isUserAction.current = false;
-    }
-
-    // Clean up temporary transition class after animations complete
-    let timer;
-    if (!isFirstRender.current) {
-      timer = setTimeout(() => {
-        root.classList.remove('theme-transitioning');
-      }, 350);
-    }
-
-    isFirstRender.current = false;
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
   }, [theme]);
 
-  // Listen for system theme changes if user hasn't explicitly set preference
+  // Listen for system theme changes ONLY if the user hasn't set an explicit preference
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
 
@@ -80,7 +44,6 @@ export function ThemeProvider({ children }) {
           setThemeState(e.matches ? 'dark' : 'light');
         }
       } catch {
-        // If localStorage is unavailable, follow system preference
         setThemeState(e.matches ? 'dark' : 'light');
       }
     };
@@ -89,15 +52,41 @@ export function ThemeProvider({ children }) {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Clean, pure state toggle — marks as user action for persistence
-  const toggleTheme = useCallback(() => {
-    isUserAction.current = true;
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  // Multi-tab synchronization: keep all open tabs in sync when user toggles theme
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleStorage = (e) => {
+      if (e.key === STORAGE_KEY && (e.newValue === 'dark' || e.newValue === 'light')) {
+        setThemeState(e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
+  // Authoritative theme toggle: persists directly and updates state predictably
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const nextTheme = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem(STORAGE_KEY, nextTheme);
+      } catch {
+        // Storage quota/security fallback
+      }
+      return nextTheme;
+    });
+  }, []);
+
+  // Explicit theme setter
   const setTheme = useCallback((newTheme) => {
     if (newTheme === 'dark' || newTheme === 'light') {
-      isUserAction.current = true;
+      try {
+        localStorage.setItem(STORAGE_KEY, newTheme);
+      } catch {
+        // Storage quota/security fallback
+      }
       setThemeState(newTheme);
     }
   }, []);

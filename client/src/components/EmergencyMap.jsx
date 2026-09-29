@@ -75,9 +75,9 @@ export default function EmergencyMap({
             icon={userLocationIcon}
           >
             <Popup>
-              <div style={{ textAlign: 'center', padding: '0.2rem' }}>
-                <strong style={{ color: 'var(--accent-cyan)' }}>📍 Your Location</strong>
-                <div style={{ fontSize: '0.75rem', color: '#ccc' }}>
+              <div className="p-1 text-center">
+                <strong className="text-red-600 dark:text-red-400 text-xs block mb-0.5">📍 Your Location</strong>
+                <div className="text-[11px] text-gray-600 dark:text-slate-300 font-mono">
                   {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
                 </div>
               </div>
@@ -98,17 +98,16 @@ export default function EmergencyMap({
               }}
             >
               <Popup>
-                <div style={{ minWidth: '180px', padding: '0.25rem' }}>
-                  <strong style={{ fontSize: '0.95rem', display: 'block', marginBottom: '0.2rem' }}>
+                <div className="min-w-[180px] p-1 space-y-1.5 text-gray-900 dark:text-white">
+                  <strong className="text-sm font-medium block leading-snug">
                     {place.name}
                   </strong>
-                  <div style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: '0.4rem' }}>
+                  <div className="text-[11px] text-gray-600 dark:text-slate-300">
                     {place.formattedDistance} • {place.openingHours}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                  <div className="flex gap-1.5 pt-1">
                     <button
-                      className="btn-primary"
-                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white cursor-pointer"
                       onClick={() => onViewDetails?.(place)}
                     >
                       Details
@@ -117,8 +116,7 @@ export default function EmergencyMap({
                       href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-secondary"
-                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', textDecoration: 'none' }}
+                      className="px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200"
                     >
                       Route
                     </a>
